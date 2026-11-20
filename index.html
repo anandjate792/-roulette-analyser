@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roulette Analyzer — ICG Pattern Finder</title>
+<style>
+:root{--bg:#0b1020;--panel:#151d31;--panel2:#1d2942;--text:#edf2ff;--muted:#aab6cf;--accent:#f0c75e;--red:#e44d5e;--green:#26a269;--black:#222938;--line:#30405f}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#0b1020,#111a2d);color:var(--text);font:15px/1.5 system-ui,Arial,sans-serif}
+header{padding:25px 18px 15px;text-align:center}h1{margin:0;color:var(--accent);font-size:clamp(24px,5vw,34px)}header p{color:var(--muted);margin:6px 0}
+main{max-width:1100px;margin:auto;padding:12px;display:grid;gap:16px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:17px;box-shadow:0 10px 25px #0003}
+h2{font-size:19px;margin:0 0 12px}h3{font-size:15px;margin:12px 0 7px;color:var(--accent)}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}input,select,button{font:inherit;border-radius:10px;border:1px solid var(--line);padding:10px 12px;background:var(--panel2);color:var(--text)}
+input[type=number]{width:100px}button{cursor:pointer;background:var(--accent);color:#1a1a1a;font-weight:700;border:0}button.secondary{background:#2a3856;color:var(--text);border:1px solid var(--line)}button.danger{background:#5b2632;color:#fff}
+.small{font-size:13px;color:var(--muted)}.pills{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.pill{padding:5px 9px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);font-size:13px}
+.results{display:flex;flex-wrap:wrap;gap:7px}.ball{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:2px solid #ffffff22}.ball.red{background:#c92f45}.ball.black{background:#202838}.ball.green{background:#168653}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}.stat{background:var(--panel2);padding:12px;border-radius:12px}.stat b{display:block;font-size:22px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:left}th{color:var(--accent)}
+.history{display:flex;gap:6px;flex-wrap:wrap}.history .ball{width:32px;height:32px;font-size:13px}
+.notice{border-left:3px solid var(--accent);padding:9px 12px;background:#f0c75e12;color:#d9e1f2;border-radius:6px;font-size:13px}
+details{border-top:1px solid var(--line);padding:10px 0}summary{cursor:pointer;color:var(--accent);font-weight:650}
+@media(min-width:800px){main{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header>
+<h1>Roulette Analyzer</h1>
+<p>ICG Faces of Numbers · Pattern Finder · Historical Probability</p>
+</header>
+<main>
+<section class="panel wide">
+<h2>1. Enter roulette results</h2>
+<div class="row">
+<input id="spinInput" type="number" min="0" max="36" placeholder="0–36">
+<button id="addBtn">Add result</button>
+<button class="secondary" id="undoBtn">Undo last</button>
+<button class="danger" id="clearBtn">Clear history</button>
+</div>
+<p class="small">Enter results in the order they occurred. European roulette numbers 0–36 are assumed.</p>
+<div class="history" id="history"></div>
+<p class="small" id="historyCount">No spins entered yet.</p>
+</section>
+
+<section class="panel">
+<h2>2. ICG Pattern Finder</h2>
+<label class="small" for="lookup">Find ICG faces for a number</label>
+<div class="row" style="margin-top:6px">
+<input id="lookup" type="number" min="0" max="36" placeholder="Number">
+<button id="findBtn">Find patterns</button>
+</div>
+<div id="faceOutput" class="small" style="margin-top:12px">Enter a number to see its ICG single-face and double-face references.</div>
+<h3>Last result lookup</h3>
+<div id="lastFaceOutput" class="small">Add a spin to see its related ICG numbers.</div>
+</section>
+
+<section class="panel">
+<h2>3. Next-number reference</h2>
+<p class="small">Numbers listed here are ICG chart relationships, not guaranteed next results.</p>
+<div id="nextNumbers" class="results"><span class="small">Add a result to begin.</span></div>
+<div id="nextExplain" class="small" style="margin-top:10px"></div>
+</section>
+
+<section class="panel">
+<h2>4. Roulette probability</h2>
+<div class="statgrid">
+<div class="stat"><span class="small">Theoretical chance of one exact number</span><b>2.70%</b><span class="small">1 in 37</span></div>
+<div class="stat"><span class="small">Theoretical chance of red</span><b>48.65%</b><span class="small">18 in 37</span></div>
+<div class="stat"><span class="small">Theoretical chance of black</span><b>48.65%</b><span class="small">18 in 37</span></div>
+<div class="stat"><span class="small">Theoretical chance of green</span><b>2.70%</b><span class="small">0 in European wheel</span></div>
+</div>
+<h3>Historical frequency in your entered spins</h3>
+<div id="empirical" class="small">Enter results to compare actual frequencies.</div>
+</section>
+
+<section class="panel wide">
+<h2>5. Colour streak & reversal test</h2>
+<div id="streakInfo" class="small">Add at least one result to detect a colour streak.</div>
+<div class="statgrid" id="streakStats" style="margin-top:10px"></div>
+<p class="notice" style="margin-top:12px">For independent roulette spins, a previous streak does not make the opposite colour “due”. With a European wheel, the chance of seeing the opposite colour at least once in the next 2 spins is 73.6%, and in the next 3 spins is 86.5%, when the target is one of the 18 opposite-colour pockets. Actual history is descriptive, not a reliable prediction.</p>
+</section>
+
+<section class="panel wide">
+<h2>6. ICG pattern reference from your photos</h2>
+<details open><summary>Outside colour patterns</summary>
+<table><tr><th>Pattern name</th><th>Chart notation</th></tr>
+<tr><td>Zig-Zag</td><td>R B R B R B / B R B R B R</td></tr>
+<tr><td>Bracket</td><td>R (B RR B) R / B (R BB R) B</td></tr>
+<tr><td>Colour Flow</td><td>R repeated / B repeated</td></tr>
+<tr><td>False Break</td><td>Single and double false-break examples shown in the ICG chart</td></tr>
+<tr><td>123</td><td>R (B RR BBB) R; chart also shows variations</td></tr>
+<tr><td>Group March</td><td>BB RR BB RR / RRR BBB RRR BBB</td></tr>
+<tr><td>2×2</td><td>BB R BB / RR B RR</td></tr></table>
+</details>
+<details><summary>Inside number patterns</summary>
+<table><tr><th>Pattern</th><th>Chart notation</th><th>FON examples in chart</th></tr>
+<tr><td>Repeating</td><td>55555</td><td>5, 10, 23, 32, 14</td></tr>
+<tr><td>1 Cut Repeating</td><td>5*5*5*5</td><td>14, 34, 5, 33, 10</td></tr>
+<tr><td>Bracket</td><td>5**5 / 5***5</td><td>23, 31, 24, 14</td></tr>
+<tr><td>1:2:1</td><td>5*5**5*5</td><td>5, 7, 32, 33, 18, 10, 17, 0</td></tr>
+<tr><td>2×2</td><td>5 5*5 5</td><td>14, 23, 31, 28, 0</td></tr>
+<tr><td>Variation bracket</td><td>5 sequence 5</td><td>23, 31, 30, 14</td></tr></table>
+</details>
+</section>
+<section class="panel wide">
+<h2>7. Number face lookup table</h2>
+<p class="small">The related-number lists below are transcribed from the ICG photos. Some entries overlap in the source chart; they are preserved as shown.</p>
+<div id="faceTable"></div>
+</section>
+</main>
+<script>
+// ICG Single Number Faces transcribed from the supplied chart.
+const singleFaces = {
+ "1-6":[1,6,15,24,33,10,29],
+ "2-7":[2,7,11,16,20,24,25,29,34],
+ "3-8":[3,8,12,17,21,26,30,35],
+ "4-9":[4,9,13,18,22,27,31,36],
+ "5-10-0":[5,0,10,14,15,19,23,28,32]
+};
+// Double-digit Real Face relationships transcribed from the supplied pages.
+const doubleFaces = {
+ 11:[11,29,24,16],12:[12,17,21,26],13:[13,18,31,36],
+ 14:[14,19,"41 (REV)"],15:[15,10,"51 (REV)"],
+ 16:[16,11,24,29,"61 (REV)"],17:[17,12,26,21,"71 (REV)"],
+ 18:[18,13,31,36,"81 (REV)"],19:[19,14,"91 (REV)"],
+ 20:[20,25,"52 (REV)"],21:[21,26,12,17],22:[22,27],
+ 23:[23,32,28],24:[24,29,"42 (REV)"],25:[25,20,"52 (REV)"],
+ 26:[26,12,21,17,"62 (REV)"],27:[27,22,"72 (REV)"],
+ 28:[28,23,32,"82 (REV)"],29:[29,24,"92 (REV)"],
+ 30:[30,35,"53 (REV)"],31:[31,13,18,36],32:[32,23,28],
+ 33:[33],34:[34,"43 (REV)"],35:[35,30,"53 (REV)"],
+ 36:[36,13,31,18,"63 (REV)"]
+};
+const red = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+const colorOf = n => n===0 ? "green" : red.has(n) ? "red" : "black";
+let spins = [];
+const $ = id => document.getElementById(id);
+function ball(n){return `<span class="ball ${colorOf(n)}">${n}</span>`}
+function getSingle(n){return Object.entries(singleFaces).filter(([k,v])=>v.includes(n)).map(([k])=>k)}
+function related(n){
+ const list = [];
+ getSingle(n).forEach(k=>singleFaces[k].forEach(x=>{if(x!==n&&!list.includes(x))list.push(x)}));
+ if(doubleFaces[n]) doubleFaces[n].forEach(x=>{if(typeof x==="number"&&x!==n&&!list.includes(x))list.push(x)});
+ return list.sort((a,b)=>a-b);
+}
+function render(){
+ $("history").innerHTML = spins.slice().reverse().map(ball).join("");
+ $("historyCount").textContent = `${spins.length} spin${spins.length===1?"":"s"} entered.`;
+ const last = spins.at(-1);
+ if(last===undefined){$("lastFaceOutput").textContent="Add a spin to see its related ICG numbers.";$("nextNumbers").innerHTML='<span class="small">Add a result to begin.</span>';$("nextExplain").textContent="";$("streakInfo").textContent="Add at least one result to detect a colour streak.";}
+ else{
+   $("lastFaceOutput").innerHTML = `Last result: <b>${last}</b> (${colorOf(last).toUpperCase()}) · Single face: ${getSingle(last).join(", ")||"none listed"} · Double face: ${(doubleFaces[last]||["No double-face row"]).join(", ")}`;
+   const rel=related(last);
+   $("nextNumbers").innerHTML = rel.length?rel.map(ball).join(""):"No related numbers found.";
+   $("nextExplain").textContent=`ICG chart references associated with ${last}. These are pattern links, not calculated outcome probabilities.`;
+   updateStreak();
+ }
+ updateEmpirical();
+}
+function findNumber(n){
+ if(!Number.isInteger(n)||n<0||n>36){$("faceOutput").textContent="Please enter a number from 0 to 36.";return;}
+ const groups=getSingle(n), d=doubleFaces[n]||[];
+ $("faceOutput").innerHTML=`<b>${n}</b> (${colorOf(n).toUpperCase()})<br>Single Number Face group(s): ${groups.join(", ")||"Not listed"}<br>Double Number Face row: ${d.join(", ")||"Not listed"}<br>Related numbers: ${related(n).join(", ")||"None"}`;
+}
+function updateEmpirical(){
+ if(!spins.length){$("empirical").textContent="Enter results to compare actual frequencies.";return;}
+ const counts={red:0,black:0,green:0};spins.forEach(n=>counts[colorOf(n)]++);
+ const exact={};spins.forEach(n=>exact[n]=(exact[n]||0)+1);
+ const top=Object.entries(exact).sort((a,b)=>b[1]-a[1]).slice(0,8);
+ $("empirical").innerHTML=`<p>Red: <b>${(counts.red/spins.length*100).toFixed(1)}%</b> (${counts.red}) · Black: <b>${(counts.black/spins.length*100).toFixed(1)}%</b> (${counts.black}) · Green: <b>${(counts.green/spins.length*100).toFixed(1)}%</b> (${counts.green})</p><p>Most frequent entered numbers: ${top.map(([n,c])=>`${n} (${c}, ${(c/spins.length*100).toFixed(1)}%)`).join(" · ")||"—"}</p><p class='small'>Sample size: ${spins.length}. Small samples can differ substantially from theoretical odds.</p>`;
+}
+function updateStreak(){
+ const lastColor=colorOf(spins.at(-1));if(lastColor==="green"){$("streakInfo").textContent="Latest result is green (0), which breaks a red/black streak."; $("streakStats").innerHTML="";return;}
+ let len=0;for(let i=spins.length-1;i>=0&&colorOf(spins[i])===lastColor;i--)len++;
+ const opposite=lastColor==="red"?"black":"red";
+ $("streakInfo").innerHTML=`Current streak: <b>${len} consecutive ${lastColor.toUpperCase()}</b>. Opposite colour being monitored: <b>${opposite.toUpperCase()}</b>.`;
+ const p2=(1-Math.pow(19/37,2))*100; // not target? chance at least one of 18 opposite pockets: 1-(19/37)^n
+ const p3=(1-Math.pow(19/37,3))*100;
+ $("streakStats").innerHTML=`<div class="stat"><span class="small">Opposite in next 2 spins (theoretical)</span><b>${p2.toFixed(1)}%</b></div><div class="stat"><span class="small">Opposite in next 3 spins (theoretical)</span><b>${p3.toFixed(1)}%</b></div><div class="stat"><span class="small">Streak length</span><b>${len}</b></div>`;
+}
+$("addBtn").addEventListener("click",()=>{const n=Number($("spinInput").value);if($("spinInput").value===""||!Number.isInteger(n)||n<0||n>36){alert("Enter a whole number from 0 to 36.");return;}spins.push(n);$("spinInput").value="";render();});
+$("spinInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("addBtn").click()});
+$("undoBtn").addEventListener("click",()=>{spins.pop();render()});
+$("clearBtn").addEventListener("click",()=>{if(confirm("Clear all entered spins?")){spins=[];render()}});
+$("findBtn").addEventListener("click",()=>findNumber(Number($("lookup").value)));
+$("lookup").addEventListener("keydown",e=>{if(e.key==="Enter")$("findBtn").click()});
+$("faceTable").innerHTML=`<table><tr><th>Face</th><th>Related numbers / REV</th></tr>${Object.entries(doubleFaces).map(([n,v])=>`<tr><td>${n}</td><td>${v.join(", ")}</td></tr>`).join("")}</table>`;
+render();
+</script>
+</body>
+</html>
